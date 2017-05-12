@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Map4Sensors</title>
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.3/dist/leaflet.css"
+	      integrity="sha512-07I2e+7D8p6he1SIM+1twR5TIrhUQn9+I6yjqD53JQjFiMf8EtC93ty0/5vJTZGF8aAocvHYNEDJajGdNx1IsQ=="
+	      crossorigin="" />
+	<script src="https://unpkg.com/leaflet@1.0.3/dist/leaflet.js"
+	        integrity="sha512-A7vV8IFfih/D732iSSKi20u/ooOfj/AGehOKq0f4vLT1Zr2Y+RX7C+w8A1gaSasGtRUZpF/NZgzSAu4/Gc41Lg=="
+	        crossorigin=""></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+	<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+	<link rel="stylesheet" href="main.css" />
+</head>
+<body>
+<div class="heading">m4sense: Sensor View</div>
+<div>
+	<div style="float: left">
+		<div id="sensorId" class="heading" style="font-size: 2em"></div>
+		<div id="details">
+			<table>
+				<tr>
+					<td>Subject</td>
+					<td>System temperature</td>
+				</tr>
+				<tr>
+					<td>Location</td>
+					<td>
+						<div id="location"></div>
+					</td>
+				</tr>
+				<tr>
+					<td>Latest timestamp</td>
+					<td>
+						<div id="timestamp"></div>
+					</td>
+				</tr>
+				<tr>
+					<td>Latest CPU temperature</td>
+					<td>
+						<div id="cpuTemp"></div>
+					</td>
+				</tr>
+				<tr>
+					<td>Latest GPU temperature</td>
+					<td>
+						<div id="gpuTemp"></div>
+					</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+	<div id="plot" style="float: right;width:1000px;height:650px;"></div>
+</div>
+<script>
+    $.urlParam = function (name) {
+        var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
+        if (results == null) {
+            return null;
+        }
+        else {
+            return results[1] || 0;
+        }
+    };
+
+    $(document).ready(function () {
+        var sensorId = $.urlParam("id");
+
+        $("#sensorId").html(sensorId);
+
+        $.getJSON("https://kswe2017.daplie.me/api/features/" + sensorId + "/observations", function (data) {
+            var times = [];
+            var cpuTemp = [];
+            var gpuTemp = [];
+
+            var lastTime = 0;
+            var lastTimeIdx = 0;
+            var i = 0;
+            data.forEach(function (element, index, array) {
+                var time = element.timestamp;
+
+                times.push(time);
+                cpuTemp.push(Number(element["CPU temperature"]));
+                gpuTemp.push(Number(element["GPU temperature"]));
+
+                if (time > lastTime) {
+                    lastTimeIdx = i;
+                    lastTime = time;
+                }
+
+                i++;
+            });
+
+            Plotly.plot("plot", [
+                {x: times, y: cpuTemp, name: "CPU temperature"},
+                {x: times, y: gpuTemp, name: "GPU temperature"}
+            ], {margin: {t: 0}});
+
+            $("#timestamp").html(lastTime);
+            $("#cpuTemp").html(cpuTemp[lastTimeIdx]);
+            $("#gpuTemp").html(gpuTemp[lastTimeIdx]);
+        });
+
+        $.getJSON("https://kswe2017.daplie.me/api/features/" + sensorId,
+            function (data) {
+                $("#location").html(data.geometry.coordinates[1] + "<br>" + data.geometry.coordinates[0]);
+            }
+        );
+    });
+</script>
+</body>
+</html>
